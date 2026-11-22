@@ -40,7 +40,18 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from config import APP_NAME, APP_TITLE, DATA_DIR, LOG_DIR, SETTINGS, TEMPLATE_DIR, asset_path
+from config import (
+    APP_NAME,
+    APP_TITLE,
+    APP_VERSION,
+    DATA_DIR,
+    LOG_DIR,
+    REPO_HOME,
+    REPO_MIRROR,
+    SETTINGS,
+    TEMPLATE_DIR,
+    asset_path,
+)
 from core import actions, recorder, vision
 from core import windows as winapi
 from core.capture import GRABBER
@@ -52,6 +63,7 @@ from ui.preview import PreviewWidget
 from ui.recorder_view import RecorderView
 from ui.region_selector import capture_template, select_region
 from ui.rule_dialog import RuleDialog, WindowPickDialog
+from ui.update_dialog import CheckWorker, UpdateDialog, show_result_if_any
 
 LEVEL_COLORS = {
     "info": "#9aa4b2",
@@ -91,7 +103,7 @@ class Bridge(QObject):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(APP_TITLE)
+        self.setWindowTitle(f"{APP_TITLE} · v{APP_VERSION}")
         self.resize(1320, 900)
         self.setMinimumSize(1100, 720)
 
@@ -128,6 +140,31 @@ class MainWindow(QMainWindow):
         self._log("info", f"{APP_NAME} 已启动，F9 开始 / F10 停止 / F8 录制动作。")
         if SETTINGS.auto_start:
             QTimer.singleShot(900, self._auto_start_engine)
+        QTimer.singleShot(3000, self._auto_check_update)
+
+    # ==================================================================
+    # 检查更新（v1.9）
+    # ==================================================================
+    def _auto_check_update(self) -> None:
+        """启动后自动检查一次，每天最多一次；查询全部在后台线程里做。"""
+        if not SETTINGS.update_auto_check:
+            return
+        today = time.strftime("%Y-%m-%d")
+        if SETTINGS.update_last_check == today:
+            return
+        SETTINGS.update_last_check = today
+        SETTINGS.save()
+        worker = CheckWorker(SETTINGS.update_source, self)
+        worker.done.connect(lambda res: show_result_if_any(self, res, self._log))
+        worker.done.connect(worker.deleteLater)
+        self._update_worker = worker
+        worker.start()
+
+    def _check_update(self) -> None:
+        """手动检查：弹出对话框，里面会显示进度并自动查询。"""
+        dlg = UpdateDialog(None, self, SETTINGS.update_source)
+        dlg.exec()
+        self._update_worker = None
 
     # ==================================================================
     # 基础设施
@@ -227,6 +264,12 @@ class MainWindow(QMainWindow):
         self.lbl_state = QLabel("未运行")
         self.lbl_state.setObjectName("Pill")
         lay.addWidget(self.lbl_state)
+
+        self.btn_update = QPushButton("检查更新")
+        self.btn_update.setObjectName("Ghost")
+        self.btn_update.setToolTip("从 GitHub / Gitee 读取最新发行版，发现新版本可直接下载")
+        self.btn_update.clicked.connect(self._check_update)
+        lay.addWidget(self.btn_update)
 
         self.btn_start_top = QPushButton("开始 F9")
         self.btn_start_top.setObjectName("Primary")
@@ -767,22 +810,50 @@ class MainWindow(QMainWindow):
         row_path.addWidget(btn_open)
         f4.addLayout(row_path)
 
-        gb5 = QGroupBox("关于")
+        gb5 = QGroupBox("版本与更新")
+        f5 = QFormLayout(gb5)
+        f5.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.FieldsStayAtSizeHint)
+        self.cb_update_src = QComboBox()
+        self.cb_update_src.setMinimumWidth(280)
+        self.cb_update_src.addItem("自动（GitHub + Gitee，取较高的版本）", "auto")
+        self.cb_update_src.addItem("仅 GitHub（国外网络更稳）", "github")
+        self.cb_update_src.addItem("仅 Gitee（国内访问更快）", "gitee")
+        idx_upd = self.cb_update_src.findData(SETTINGS.update_source)
+        self.cb_update_src.setCurrentIndex(0 if idx_upd < 0 else idx_upd)
+        self.chk_update_auto = QCheckBox("启动时自动检查更新（每天最多一次）")
+        self.chk_update_auto.setChecked(SETTINGS.update_auto_check)
+        btn_check_now = QPushButton("立即检查更新")
+        btn_check_now.clicked.connect(self._check_update)
+        row_up = QHBoxLayout()
+        row_up.addWidget(btn_check_now)
+        row_up.addStretch(1)
+        f5.addRow("检查源", self.cb_update_src)
+        f5.addRow("", self.chk_update_auto)
+        f5.addRow("", row_up)
+        hint_up = QLabel(f"当前 v{APP_VERSION}　GitHub：{REPO_HOME}　Gitee：{REPO_MIRROR}")
+        hint_up.setObjectName("Muted")
+        hint_up.setWordWrap(True)
+        hint_up.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        f5.addRow("", hint_up)
+
+        gb6 = QGroupBox("关于")
         about = QLabel(
-            f"{APP_NAME} v1.8 · 纯本地运行，不联网、不上传屏幕内容\n"
+            f"{APP_NAME} v{APP_VERSION} · 纯本地运行，识别过程不联网、不上传屏幕内容\n"
+            "只有点「检查更新」时才会访问 GitHub / Gitee 的发行版接口\n"
             "文字识别：RapidOCR（PP-OCR 轻量模型）　找图：OpenCV 模板匹配\n"
             "操作模拟：Win32 SendInput　录制：低层鼠标钩子　界面：PySide6 (Qt 6)"
         )
         about.setObjectName("Muted")
         about.setWordWrap(True)
-        gb5_lay = QVBoxLayout(gb5)
-        gb5_lay.addWidget(about)
+        gb6_lay = QVBoxLayout(gb6)
+        gb6_lay.addWidget(about)
 
         lay.addWidget(gb1)
         lay.addWidget(gb2)
         lay.addWidget(gb3)
         lay.addWidget(gb4)
         lay.addWidget(gb5)
+        lay.addWidget(gb6)
         lay.addStretch(1)
         scroll.setWidget(scroll_host)
         outer.addWidget(scroll, 1)
@@ -1833,6 +1904,8 @@ class MainWindow(QMainWindow):
         SETTINGS.toast_on_hit = self.chk_toast.isChecked()
         SETTINGS.ocr_upscale = round(self.sp_upscale.value(), 1)
         SETTINGS.frame_skip = self.chk_frameskip.isChecked()
+        SETTINGS.update_source = str(self.cb_update_src.currentData() or "auto")
+        SETTINGS.update_auto_check = self.chk_update_auto.isChecked()
         SETTINGS.save()
         self._timer.setInterval(SETTINGS.preview_interval_ms)
         self.chk_live.setChecked(SETTINGS.live_preview)

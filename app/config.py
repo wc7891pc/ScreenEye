@@ -9,6 +9,9 @@ from pathlib import Path
 APP_NAME = "慧眼屏幕助手"
 APP_TITLE = "慧眼屏幕助手 · 屏幕识别与自动化"
 APP_ID = "ScreenEye"
+APP_VERSION = "1.9"          # 程序内版本号：关于面板、检查更新、窗口标题都用它
+REPO_HOME = "https://github.com/wc7891pc/ScreenEye"
+REPO_MIRROR = "https://gitee.com/zhangjiahang7891/ScreenEye"
 
 
 def _base_dir() -> Path:
@@ -70,6 +73,10 @@ class Settings:
     # ---- v1.6：多窗口 ----
     window_whitelist: list[str] = field(default_factory=list)
     # 只对这些窗口生效（为空 = 不限制）。条目是窗口标题关键字，勾选时按当时标题写入。
+    # ---- v1.9：检查更新 ----
+    update_source: str = "auto"          # auto / github / gitee：从哪个仓库查最新版本
+    update_auto_check: bool = True       # 启动时自动检查一次（每天最多一次）
+    update_last_check: str = ""          # 上次自动检查日期 YYYY-MM-DD
 
     @classmethod
     def load(cls) -> "Settings":
