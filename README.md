@@ -354,4 +354,4 @@ ScreenEye/
 
 本项目采用 **MIT License**，可自由使用、修改、商用和再分发，只需保留版权声明与许可证文本。第三方依赖的许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-源码仓库不包含便携 Python 运行时和大体积二进制；需要解压即用的版本请到 Releases 下载。
+源码仓库不包含便携 Python 运行时和大体积二进制；需要解压即用的版本请到群文件或 Releases 附件下载。
