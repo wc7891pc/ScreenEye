@@ -364,3 +364,14 @@ ScreenEye/
 ## 八、使用边界
 
 本工具是通用屏幕自动化助手。自动化操作可能违反部分网络服务或游戏的服务条款，请只在你有权操作的软件、自己的账号和本地环境中使用，不要用于刷量、外挂、抢购脚本等违规用途。程序不会收集或上传任何数据。
+
+---
+
+## 九、安卓版
+
+安卓端单独一个仓库（免 root：无障碍点击 + 屏幕录制授权 + ML Kit 中文 OCR + OpenCV 模板匹配）：
+
+- GitHub：https://github.com/wc7891pc/ScreenEye-Android
+- Gitee：https://gitee.com/zhangjiahang7891/ScreenEye-Android
+
+版本号与 PC 版各自独立（PC v1.9 / 安卓 v1.3），发行版见各自仓库的 Releases。
