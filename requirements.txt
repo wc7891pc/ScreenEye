@@ -1,0 +1,11 @@
+# 运行依赖（Python 3.13 / Windows x64）
+PySide6==6.12.0
+opencv-python==5.0.0.93
+numpy==2.5.5
+rapidocr-onnxruntime==1.2.3
+onnxruntime==1.32.0
+mss==10.2.0
+pillow==13.0.0
+
+# 打包用（可选）
+# pyinstaller==6.15.0
